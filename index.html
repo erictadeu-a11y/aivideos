@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bild Studios • AI Production Research Portal v43</title>
+
+  <!-- Google Fonts: Poppins -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js CDN for 360 Spherical Video Viewer -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Poppins', 'sans-serif'],
+          },
+          colors: {
+            bild: {
+              charcoal: '#161616',
+              card: '#1e1e1e',
+              border: '#2a2a2a',
+              beige: '#c5b79d',
+              beigeHover: '#d8cdb7',
+              beigeDark: '#a69980',
+              muted: '#8e8e93'
+            }
+          }
+        }
+      }
+    };
+
+    // Pre-declared global routing variables & functions in HEAD
+    var currentDomain = 'video';
+    var isCoverVisible = true;
+    var availableDomains = ['video', 'retopology', 'splat', 'uv'];
+
+    function showToast(msg) {
+      var toast = document.getElementById('studio-toast');
+      var toastMsg = document.getElementById('studio-toast-msg');
+      if (toast && toastMsg) {
+        toastMsg.textContent = msg;
+        toast.classList.remove('translate-y-20', 'opacity-0');
+        setTimeout(function() {
+          toast.classList.add('translate-y-20', 'opacity-0');
+        }, 2500);
+      }
+    }
+
+    function setDomainView(domain) {
+      currentDomain = domain;
+
+      // Switch top headers
+      var headerKeys = ['video', 'retopo', 'splat', 'uv'];
+      for (var i = 0; i < headerKeys.length; i++) {
+        var d = headerKeys[i];
+        var nav = document.getElementById('nav-' + d + '-headers');
+        if (nav) {
+          var isTarget = (d === 'retopo' ? 'retopology' : d) === domain;
+          nav.classList.toggle('hidden', !isTarget);
+        }
+      }
+
+      // Switch domain view containers
+      for (var j = 0; j < availableDomains.length; j++) {
+        var dom = availableDomains[j];
+        var view = document.getElementById('domain-view-' + dom);
+        if (view) {
+          view.classList.toggle('hidden', dom !== domain);
+        }
+      }
+
+      if (domain === 'video') {
+        if (typeof switchVideoSection === 'function') {
+          switchVideoSection('comparisons');
+        }
+        if (typeof resumeSphericalVideos === 'function') {
+          resumeSphericalVideos();
+        }
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function openDomain(domain) {
+      var coverPage = document.getElementById('cover-page');
+      if (availableDomains.indexOf(domain) !== -1) {
+        setDomainView(domain);
+        if (coverPage) {
+          coverPage.classList.add('opacity-0', 'pointer-events-none');
+          isCoverVisible = false;
+          setTimeout(function() {
+            coverPage.style.display = 'none';
+          }, 500);
+        }
+      } else if (domain === 'image') {
+        showToast('Image research pipeline is scheduled for Q3 2026.');
+      } else if (domain === '3dmodels') {
+        showToast('3D Models research pipeline is in active staging.');
+      }
+    }
+
+    function goToCoverPage() {
+      var coverPage = document.getElementById('cover-page');
+      if (coverPage) {
+        coverPage.style.display = 'flex';
+        void coverPage.offsetWidth; // Force reflow
+        coverPage.classList.remove('opacity-0', 'pointer-events-none');
+        isCoverVisible = true;
+      }
+      if (typeof closeLightbox === 'function') {
+        closeLightbox();
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #161616;
+      color: #f5f5f7;
+      font-family: 'Poppins', sans-serif;
+      overflow-x: hidden;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #161616;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2a2a2a;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #c5b79d;
+    }
+
+    /* Cover Page Links: Clean CSS-based beige hover without blur */
+    .cover-link-text {
+      display: inline-block;
+      font-weight: 300;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      user-select: none;
+      color: #d4d4d8;
+      transition: color 0.25s ease;
+    }
+    .cover-link-text:hover {
+      color: #c5b79d !important;
+    }
+
+    /* Sliding Underline Nav Items */
+    .nav-item {
+      position: relative;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 0.8125rem;
+      font-weight: 400;
+      color: #a1a1aa;
+      transition: color 0.25s ease;
+      padding-bottom: 6px;
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+    .nav-item:hover {
+      color: #ffffff;
+    }
+    .nav-item::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 2px;
+      background-color: #c5b79d;
+      transform: scaleX(0);
+      transform-origin: center;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .nav-item:hover::after {
+      transform: scaleX(1);
+    }
+    .nav-item.active {
+      color: #ffffff;
+      font-weight: 500;
+    }
+    .nav-item.active::after {
+      transform: scaleX(1);
+    }
+
+    /* Subnav Category Filters */
+    .subnav-filter {
+      position: relative;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      color: #8e8e93;
+      padding-bottom: 3px;
+      transition: color 0.2s ease;
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+    .subnav-filter:hover {
+      color: #f5f5f7;
+    }
+    .subnav-filter.active {
+      color: #f5f5f7;
+      font-weight: 600;
+    }
+    .subnav-filter.active::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 2px;
+      background-color: #c5b79d;
+    }
+
+    .portfolio-overlay {
+      background: rgba(18, 18, 20, 0.78);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    video {
+      transform: translate3d(0, 0, 0);
+      backface-visibility: hidden;
+    }
+
+    /* Responsive 16:9 Slide Embed Wrapper */
+    .slides-embed-wrapper {
+      position: relative;
+      width: 100%;
+      padding-bottom: 56.25%;
+      height: 0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #111;
+      border: 1px solid #2a2a2a;
+    }
+    .slides-embed-wrapper iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+  </style>
+</head>
+<body class="selection:bg-bild-beige selection:text-black min-h-screen flex flex-col">
+
+  <!-- ============================================================== -->
+  <!-- 1. COVER PAGE / CENTRAL HUB                                    -->
+  <!-- ============================================================== -->
+  <div id="cover-page" class="fixed inset-0 z-50 bg-[#161616] flex flex-col justify-between items-center px-6 py-10 sm:py-14 transition-opacity duration-500 ease-out">
+    
+    <!-- Top Header Logo (bildlogoai.png) -->
+    <header class="w-full flex justify-center items-center pt-2 sm:pt-4">
+      <div class="cursor-pointer transform translate-x-3 sm:translate-x-4 transition-opacity duration-300 hover:opacity-85" onclick="goToCoverPage()">
+        <img 
+          src="https://github.com/erictadeu-a11y/aivideos/releases/download/test/bildlogoai.png" 
+          alt="Bild Studios Logo" 
+          class="h-10 sm:h-12 md:h-14 w-auto object-contain cursor-pointer"
+        />
+      </div>
+    </header>
+
+    <!-- Center 6-Item Menu Grid (Small Text + Wide Vertical Spacing + Beige Hover) -->
+    <main class="w-full max-w-[460px] my-auto">
+      <div id="cover-nav-grid" class="cover-grid grid grid-cols-2 gap-x-12 sm:gap-x-16 gap-y-16 sm:gap-y-24 md:gap-y-28 text-center">
+        <!-- Row 1: Video & Image -->
+        <div onclick="openDomain('video')" class="cover-link-item flex justify-center">
+          <span class="cover-link-text text-base sm:text-lg md:text-xl font-light">
+            video
+          </span>
+        </div>
+
+        <div onclick="openDomain('image')" class="cover-link-item flex justify-center">
+          <span class="cover-link-text text-base sm:text-lg md:text-xl font-light">
+            image
+          </span>
+        </div>
+
+        <!-- Row 2: Retopology & Splat -->
+        <div onclick="openDomain('retopology')" class="cover-link-item flex justify-center">
+          <span class="cover-link-text text-base sm:text-lg md:text-xl font-light">
+            retopology
+          </span>
+        </div>
+
+        <div onclick="openDomain('splat')" class="cover-link-item flex justify-center">
+          <span class="cover-link-text text-base sm:text-lg md:text-xl font-light">
+            splat
+          </span>
+        </div>
+
+        <!-- Row 3: UV & 3D Models -->
+        <div onclick="openDomain('uv')" class="cover-link-item flex justify-center">
+          <span class="cover-link-text text-base sm:text-lg md:text-xl font-light">
+            uv
+          </span>
+        </div>
+
+        <div onclick="openDomain('3dmodels')" class="cover-link-item flex justify-center">
+          <span class="cover-link-text text-base sm:text-lg md:text-xl font-light">
+            3d models
+          </span>
+        </div>
+      </div>
+    </main>
+
+    <!-- Cover Page Footer -->
+    <footer class="w-full text-center pb-2">
+      <p class="text-[11px] text-neutral-500 font-light tracking-widest uppercase">
+        &copy;2026 &nbsp;Bild Studios Commercial In Confidence
+      </p>
+    </footer>
+  </div>
+
+
+  <!-- ============================================================== -->
+  <!-- 2. MAIN APPLICATION WORKSPACE                                 -->
+  <!-- ============================================================== -->
+  <div id="main-app" class="flex flex-col min-h-screen">
+
+    <!-- STICKY TOP BRAND NAVBAR -->
+    <header class="sticky top-0 z-40 bg-[#161616]/95 backdrop-blur-md border-b border-[#262626] px-6 sm:px-12 py-5">
+      <div class="max-w-[1400px] mx-auto flex items-center justify-between">
+        
+        <!-- Bild Logo Left (Always returns to Cover Page) -->
+        <button onclick="goToCoverPage()" class="flex items-center group select-none text-left focus:outline-none" aria-label="Return to Portal">
+          <img 
+            src="https://github.com/erictadeu-a11y/aivideos/releases/download/test/bildlogoai.png" 
+            alt="Bild Studios Logo" 
+            class="h-8 sm:h-9 w-auto object-contain transition-opacity duration-200 group-hover:opacity-85"
+          />
+        </button>
+
+        <!-- Dynamic Department Navbars -->
+        <nav id="nav-video-headers" class="flex items-center gap-6 sm:gap-10">
+          <button onclick="switchVideoSection('comparisons')" id="tab-v-comparisons" class="nav-item active">Comparisons</button>
+          <button onclick="switchVideoSection('specs')" id="tab-v-specs" class="nav-item">PC Specs</button>
+          <button onclick="switchVideoSection('workflows')" id="tab-v-workflows" class="nav-item">ComfyUI Workflows</button>
+          <button onclick="switchVideoSection('models')" id="tab-v-models" class="nav-item">Models Used</button>
+        </nav>
+
+        <nav id="nav-retopo-headers" class="hidden flex items-center gap-6 sm:gap-10">
+          <span class="text-xs uppercase tracking-widest text-bild-beige font-mono">Retopology AI Research Deck</span>
+          <button onclick="goToCoverPage()" class="nav-item">Portal Menu</button>
+        </nav>
+
+        <nav id="nav-splat-headers" class="hidden flex items-center gap-6 sm:gap-10">
+          <span class="text-xs uppercase tracking-widest text-bild-beige font-mono">Splat Generation Research Deck</span>
+          <button onclick="goToCoverPage()" class="nav-item">Portal Menu</button>
+        </nav>
+
+        <nav id="nav-uv-headers" class="hidden flex items-center gap-6 sm:gap-10">
+          <span class="text-xs uppercase tracking-widest text-bild-beige font-mono">UV Unwrapping Research Deck</span>
+          <button onclick="goToCoverPage()" class="nav-item">Portal Menu</button>
+        </nav>
+
+      </div>
+    </header>
+
+    <!-- MAIN BODY CONTENT -->
+    <main class="max-w-[1400px] mx-auto px-6 sm:px-12 py-10 flex-grow w-full">
+
+      <!-- ============================================================== -->
+      <!-- SECTION 1: VIDEO GENERATION RESEARCH                           -->
+      <!-- ============================================================== -->
+      <section id="domain-view-video" class="domain-page-view space-y-8">
+        
+        <!-- Subnav Category Filter Bar: ALL | VIDEO TO VIDEO | 360 -->
+        <div class="flex flex-wrap items-center gap-3 sm:gap-5 pb-5 border-b border-[#242424]">
+          <button onclick="filterCategory('all')" class="subnav-filter active" id="f-video-all">ALL</button>
+          <span class="text-[#3a3a3a]">|</span>
+          <button onclick="filterCategory('v2v')" class="subnav-filter" id="f-video-v2v">VIDEO TO VIDEO</button>
+          <span class="text-[#3a3a3a]">|</span>
+          <button onclick="filterCategory('360')" class="subnav-filter" id="f-video-360">360</button>
+        </div>
+
+        <!-- Video Tab View: Comparisons Grid (4 Research Cards) -->
+        <div id="video-view-comparisons" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+
+          <!-- CARD 1: Video to Video Crossfade (MARS Studio Entrance Plate) -->
+          <div class="comp-card video-card group relative aspect-[16/10] overflow-hidden rounded bg-[#1e1e1e] border border-[#262626] cursor-pointer transition-all duration-300 hover:border-bild-beige/60 hover:shadow-2xl"
+               data-category="v2v"
+               id="card-1"
+               onclick="openLightbox('card1')"
+               onmouseenter="handleCard1Hover(true)"
+               onmouseleave="handleCard1Hover(false)">
+
+            <div id="card1-media-slot" class="w-full h-full relative overflow-hidden bg-black select-none">
+              <!-- Reference Video (1.Ref.MOV) -->
+              <video id="video-ref-1" 
+                     src="https://github.com/erictadeu-a11y/aivideos/releases/download/test/1.Ref.MOV" 
+                     class="absolute inset-0 w-full h-full object-cover z-0" 
+                     loop muted playsinline preload="auto" autoplay disableRemotePlayback></video>
+
+              <!-- AI Output Video Layer (1.AI_2.mp4) -->
+              <div id="ai-layer-1" class="absolute inset-0 w-full h-full transition-opacity duration-300 pointer-events-none z-10">
+                <video id="video-ai-1" 
+                       src="https://github.com/erictadeu-a11y/aivideos/releases/download/test/1.AI_2.mp4" 
+                       class="w-full h-full object-cover" 
+                       loop muted playsinline preload="auto" autoplay disableRemotePlayback></video>
+              </div>
+
+              <!-- Top Left Badge -->
+              <div class="absolute top-3 left-3 px-2 py-1 bg-black/85 rounded text-[10px] font-mono tracking-wider border border-white/10 z-20 pointer-events-none">
+                <span id="card1-badge" class="text-bild-beige font-semibold">AI</span>
+              </div>
+            </div>
+
+            <!-- Centered Frosted Overlay Badge -->
+            <div class="absolute inset-x-8 top-1/2 -translate-y-1/2 p-5 text-center portfolio-overlay rounded pointer-events-none transition-transform duration-300 group-hover:scale-105 z-20">
+              <h3 class="text-base sm:text-lg font-light text-white tracking-wide mb-1 border-b border-white/20 pb-1.5 inline-block px-3">
+                MARS Volume Pyro &amp; Wardrobe
+              </h3>
+              <p class="text-xs uppercase tracking-[0.2em] text-[#d1d1d6] font-light mt-1">
+                STUDIO ENTRANCE • LTX RIPPLE &amp; FLUX
+              </p>
+            </div>
+          </div>
+
+          <!-- CARD 2: 360 Equirectangular Projection 01 (1 360 AI.mp4 vs 1.AI_2.mp4) -->
+          <div class="comp-card video-card group relative aspect-[16/10] overflow-hidden rounded bg-[#1e1e1e] border border-[#262626] cursor-grab active:cursor-grabbing transition-all duration-300 hover:border-bild-beige/60 hover:shadow-2xl select-none"
+               data-category="360"
+               id="card-2"
+               onclick="handleCard2Click(event)">
+
+            <!-- Three.js Canvas Container for Card 2 -->
+            <div id="three-card-container-2" class="w-full h-full bg-black"></div>
+
+            <!-- Centered Frosted Title Badge -->
+            <div class="absolute inset-x-8 top-1/2 -translate-y-1/2 p-5 text-center portfolio-overlay rounded pointer-events-none transition-transform duration-300 group-hover:scale-105 z-20">
+              <h3 class="text-base sm:text-lg font-light text-white tracking-wide mb-1 border-b border-white/20 pb-1.5 inline-block px-3">
+                Equirectangular Generative Outpaint 01
+              </h3>
+              <p class="text-xs uppercase tracking-[0.2em] text-[#d1d1d6] font-light mt-1">
+                360° IMMERSIVE • CONTINUOUS PANORAMIC
+              </p>
+            </div>
+
+            <!-- Top Left Badge: strictly says 360 -->
+            <div class="absolute top-3 left-3 px-2 py-1 bg-black/85 rounded text-[10px] font-mono tracking-wider text-bild-beige border border-bild-beige/30 z-20 pointer-events-none">
+              360
+            </div>
+
+            <!-- Bottom Right Badge -->
+            <div class="absolute bottom-3 right-3 text-[10px] font-mono text-white bg-black/80 px-2.5 py-1 rounded pointer-events-none z-20 border border-white/10">
+              drag to rotate
+            </div>
+          </div>
+
+          <!-- CARD 3: 360 Equirectangular Projection 02 (2 360 AI.mp4 vs 2.360.OG.mp4) -->
+          <div class="comp-card video-card group relative aspect-[16/10] overflow-hidden rounded bg-[#1e1e1e] border border-[#262626] cursor-grab active:cursor-grabbing transition-all duration-300 hover:border-bild-beige/60 hover:shadow-2xl select-none"
+               data-category="360"
+               id="card-3"
+               onclick="handleCard3Click(event)">
+
+            <!-- Three.js Canvas Container for Card 3 -->
+            <div id="three-card-container-3" class="w-full h-full bg-black"></div>
+
+            <!-- Centered Frosted Title Badge -->
+            <div class="absolute inset-x-8 top-1/2 -translate-y-1/2 p-5 text-center portfolio-overlay rounded pointer-events-none transition-transform duration-300 group-hover:scale-105 z-20">
+              <h3 class="text-base sm:text-lg font-light text-white tracking-wide mb-1 border-b border-white/20 pb-1.5 inline-block px-3">
+                Equirectangular Generative Outpaint 02
+              </h3>
+              <p class="text-xs uppercase tracking-[0.2em] text-[#d1d1d6] font-light mt-1">
+                360° IMMERSIVE • STAGE PANORAMA EXTENSION
+              </p>
+            </div>
+
+            <!-- Top Left Badge -->
+            <div class="absolute top-3 left-3 px-2 py-1 bg-black/85 rounded text-[10px] font-mono tracking-wider text-bild-beige border border-bild-beige/30 z-20 pointer-events-none">
+              360
+            </div>
+
+            <!-- Bottom Right Badge -->
+            <div class="absolute bottom-3 right-3 text-[10px] font-mono text-white bg-black/80 px-2.5 py-1 rounded pointer-events-none z-20 border border-white/10">
+              drag to rotate
+            </div>
+          </div>
+
+          <!-- CARD 4: Dual-Action Comparative Plate (2.DA.AI.mp4 vs 2.DA.OG.mp4) -->
+          <div class="comp-card video-card group relative aspect-[16/10] overflow-hidden rounded bg-[#1e1e1e] border border-[#262626] cursor-pointer transition-all duration-300 hover:border-bild-beige/60 hover:shadow-2xl"
+               data-category="v2v"
+               id="card-4"
+               onclick="openLightbox('card4')"
+               onmouseenter="handleCard4Hover(true)"
+               onmouseleave="handleCard4Hover(false)">
+
+            <div id="card4-media-slot" class="w-full h-full relative overflow-hidden bg-black select-none">
+              <!-- Reference Video (2.DA.OG.mp4) -->
+              <video id="video-ref-4" 
+                     src="https://github.com/erictadeu-a11y/aivideos/releases/download/test/2.DA.OG.mp4" 
+                     class="absolute inset-0 w-full h-full object-cover z-0" 
+                     loop muted playsinline preload="auto" autoplay disableRemotePlayback></video>
+
+              <!-- AI Output Video Layer (2.DA.AI.mp4) -->
+              <div id="ai-layer-4" class="absolute inset-0 w-full h-full transition-opacity duration-300 pointer-events-none z-10">
+                <video id="video-ai-4" 
+                       src="https://github.com/erictadeu-a11y/aivideos/releases/download/test/2.DA.AI.mp4" 
+                       class="w-full h-full object-cover" 
+                       loop muted playsinline preload="auto" autoplay disableRemotePlayback></video>
+              </div>
+
+              <!-- Top Left Badge -->
+              <div class="absolute top-3 left-3 px-2 py-1 bg-black/85 rounded text-[10px] font-mono tracking-wider border border-white/10 z-20 pointer-events-none">
+                <span id="card4-badge" class="text-bild-beige font-semibold">AI</span>
+              </div>
+            </div>
+
+            <!-- Centered Frosted Overlay Badge -->
+            <div class="absolute inset-x-8 top-1/2 -translate-y-1/2 p-5 text-center portfolio-overlay rounded pointer-events-none transition-transform duration-300 group-hover:scale-105 z-20">
+              <h3 class="text-base sm:text-lg font-light text-white tracking-wide mb-1 border-b border-white/20 pb-1.5 inline-block px-3">
+                Dynamic Action Synthesis
+              </h3>
+              <p class="text-xs uppercase tracking-[0.2em] text-[#d1d1d6] font-light mt-1">
+                DUAL-ACTION TEMPORAL CONSISTENCY
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Video Tab View: PC Specs -->
+        <div id="video-view-specs" class="hidden p-8 rounded bg-[#1e1e1e] border border-[#2a2a2a] space-y-6">
+          <div class="pb-3 border-b border-[#2a2a2a] flex items-baseline justify-between">
+            <h3 class="text-lg font-light text-white tracking-wide uppercase">Workstation Compute Cluster Profile</h3>
+            <span class="text-xs font-mono text-bild-beige">HARDWARE SPECIFICATIONS</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-sm font-light">
+            <div class="p-4 bg-[#141416] rounded border border-[#26262a]">
+              <span class="text-xs text-bild-muted block uppercase mb-1">Primary Dedicated GPU</span>
+              <span class="text-white font-mono text-base">NVIDIA RTX A6000 (48GB GDDR6 ECC)</span>
+            </div>
+            <div class="p-4 bg-[#141416] rounded border border-[#26262a]">
+              <span class="text-xs text-bild-muted block uppercase mb-1">Host Memory Allocation</span>
+              <span class="text-white font-mono text-base">256GB DDR5 Quad-Channel Registered ECC</span>
+            </div>
+            <div class="p-4 bg-[#141416] rounded border border-[#26262a]">
+              <span class="text-xs text-bild-muted block uppercase mb-1">Processor Topology</span>
+              <span class="text-white font-mono text-base">AMD Ryzen Threadripper PRO 5975WX</span>
+            </div>
+            <div class="p-4 bg-[#141416] rounded border border-[#26262a]">
+              <span class="text-xs text-bild-muted block uppercase mb-1">Scratch Storage Array</span>
+              <span class="text-white font-mono text-base">PCIe 4.0 NVMe RAID 0 (14,000 MB/s read)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Video Tab View: ComfyUI Workflows -->
+        <div id="video-view-workflows" class="hidden p-8 rounded bg-[#1e1e1e] border border-[#2a2a2a] space-y-6">
+          <div class="pb-3 border-b border-[#2a2a2a] flex items-baseline justify-between">
+            <h3 class="text-lg font-light text-white tracking-wide uppercase">ComfyUI Latent Video Graph</h3>
+            <span class="text-xs font-mono text-bild-beige">PRODUCTION NODES</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-neutral-300">
+            <div class="p-5 bg-[#141416] rounded border border-[#26262a] space-y-3">
+              <span class="text-bild-beige font-mono uppercase text-xs block">Graph 01 • LTX 2.5 Ripple + Flux Edit</span>
+              <p class="leading-relaxed text-neutral-400">
+                Transforms plate subjects on Frame 0 with Flux2 Klein 9B, feeding guide latents through <code class="text-bild-beige">LTXVAddGuide</code> into LTX-2.5 22B for flicker-free temporal consistency.
+              </p>
+            </div>
+            <div class="p-5 bg-[#141416] rounded border border-[#26262a] space-y-3">
+              <span class="text-bild-beige font-mono uppercase text-xs block">Graph 02 • MiniMax H3 Video Latent</span>
+              <p class="leading-relaxed text-neutral-400">
+                High-dynamic physical world simulation locked into 48GB dedicated VRAM, bypassing host paging bottlenecks and maintaining 95%+ GPU utilization.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Video Tab View: Models Used -->
+        <div id="video-view-models" class="hidden p-8 rounded bg-[#1e1e1e] border border-[#2a2a2a] space-y-4">
+          <div class="pb-3 border-b border-[#2a2a2a] flex items-baseline justify-between">
+            <h3 class="text-lg font-light text-white tracking-wide uppercase">Checkpoints &amp; Motion Modules</h3>
+            <span class="text-xs font-mono text-bild-beige">ARCHITECTURE</span>
+          </div>
+          <div class="space-y-3 text-xs">
+            <div class="p-4 bg-[#141416] rounded border border-[#26262a] flex justify-between items-center">
+              <div>
+                <strong class="text-white block mb-0.5">AnimateDiff Motion Module v3</strong>
+                <span class="text-neutral-400">16-frame sliding context temporal conditioning</span>
+              </div>
+              <span class="text-bild-beige font-mono">FP16</span>
+            </div>
+            <div class="p-4 bg-[#141416] rounded border border-[#26262a] flex justify-between items-center">
+              <div>
+                <strong class="text-white block mb-0.5">Stable Video Diffusion (SVD-XT)</strong>
+                <span class="text-neutral-400">Latent frame extrapolation for outpaint buffers</span>
+              </div>
+              <span class="text-bild-beige font-mono">25 frames</span>
+            </div>
+            <div class="p-4 bg-[#141416] rounded border border-[#26262a] flex justify-between items-center">
+              <div>
+                <strong class="text-white block mb-0.5">ltx-2.5-22b-distilled-transformer</strong>
+                <span class="text-neutral-400">Spatiotemporal latent diffusion backbone</span>
+              </div>
+              <span class="text-bild-beige font-mono">INT8 ConvRot</span>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- SECTION 2: RETOPOLOGY SLIDES EMBED                             -->
+      <!-- ============================================================== -->
+      <section id="domain-view-retopology" class="domain-page-view hidden space-y-6">
+        <div class="flex items-center justify-between pb-3 border-b border-[#2a2a2a]">
+          <div>
+            <span class="text-xs font-mono text-bild-beige uppercase tracking-wider block">AI Research • Presentation</span>
+            <h2 class="text-xl sm:text-2xl font-light text-white tracking-wide">Retopology Evaluation Deck</h2>
+          </div>
+          <a href="https://docs.google.com/presentation/d/1BVsVVC1ZeHzCiJcI6ERjetHOAhQvsoiquacbxWXZAxY/edit" 
+             target="_blank" 
+             class="text-xs font-mono text-bild-beige hover:text-white border border-bild-beige/40 px-3 py-1.5 rounded transition">
+            Open in Google Slides &nearr;
+          </a>
+        </div>
+
+        <div class="slides-embed-wrapper shadow-2xl">
+          <iframe 
+            src="https://docs.google.com/presentation/d/1BVsVVC1ZeHzCiJcI6ERjetHOAhQvsoiquacbxWXZAxY/embed?start=false&loop=false&delayms=3000" 
+            allowfullscreen="true" 
+            mozallowfullscreen="true" 
+            webkitallowfullscreen="true">
+          </iframe>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- SECTION 3: SPLAT GENERATION SLIDES EMBED                       -->
+      <!-- ============================================================== -->
+      <section id="domain-view-splat" class="domain-page-view hidden space-y-6">
+        <div class="flex items-center justify-between pb-3 border-b border-[#2a2a2a]">
+          <div>
+            <span class="text-xs font-mono text-bild-beige uppercase tracking-wider block">AI Research • Presentation</span>
+            <h2 class="text-xl sm:text-2xl font-light text-white tracking-wide">Splat Generation Deck</h2>
+          </div>
+          <a href="https://docs.google.com/presentation/d/1WE_RiiF_CAmV-viBUi-uv7bLyzWhOsrcXutKl0yabbU/edit" 
+             target="_blank" 
+             class="text-xs font-mono text-bild-beige hover:text-white border border-bild-beige/40 px-3 py-1.5 rounded transition">
+            Open in Google Slides &nearr;
+          </a>
+        </div>
+
+        <div class="slides-embed-wrapper shadow-2xl">
+          <iframe 
+            src="https://docs.google.com/presentation/d/1WE_RiiF_CAmV-viBUi-uv7bLyzWhOsrcXutKl0yabbU/embed?start=false&loop=false&delayms=3000" 
+            allowfullscreen="true" 
+            mozallowfullscreen="true" 
+            webkitallowfullscreen="true">
+          </iframe>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- SECTION 4: UV UNWRAPPING SLIDES EMBED                          -->
+      <!-- ============================================================== -->
+      <section id="domain-view-uv" class="domain-page-view hidden space-y-6">
+        <div class="flex items-center justify-between pb-3 border-b border-[#2a2a2a]">
+          <div>
+            <span class="text-xs font-mono text-bild-beige uppercase tracking-wider block">AI Research • Presentation</span>
+            <h2 class="text-xl sm:text-2xl font-light text-white tracking-wide">UV Unwrapping Deck</h2>
+          </div>
+          <a href="https://docs.google.com/presentation/d/13S-ZcGE-i4duk5qvWW-r_2xr5GCVXwqbikfuw2j630o/edit" 
+             target="_blank" 
+             class="text-xs font-mono text-bild-beige hover:text-white border border-bild-beige/40 px-3 py-1.5 rounded transition">
+            Open in Google Slides &nearr;
+          </a>
+        </div>
+
+        <div class="slides-embed-wrapper shadow-2xl">
+          <iframe 
+            src="https://docs.google.com/presentation/d/13S-ZcGE-i4duk5qvWW-r_2xr5GCVXwqbikfuw2j630o/embed?start=false&loop=false&delayms=3000" 
+            allowfullscreen="true" 
+            mozallowfullscreen="true" 
+            webkitallowfullscreen="true">
+          </iframe>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="py-10 px-6 sm:px-12 border-t border-[#262626] bg-[#141414] text-xs text-bild-muted mt-auto">
+      <div class="max-w-[1400px] mx-auto flex items-center justify-between">
+        <!-- Bild Logo Left -->
+        <button onclick="goToCoverPage()" class="flex items-center group cursor-pointer focus:outline-none" aria-label="Return to Portal">
+          <img 
+            src="https://github.com/erictadeu-a11y/aivideos/releases/download/test/bildlogoai.png" 
+            alt="Bild Studios Logo" 
+            class="h-6 sm:h-7 w-auto object-contain transition-opacity group-hover:opacity-85"
+          />
+        </button>
+
+        <!-- Right: Confidentiality Notice -->
+        <div class="text-right">
+          <span class="text-[11px] font-mono tracking-wider text-white">
+            &copy;2026 Bild Studios Commercial In Confidence
+          </span>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+
+  <!-- ============================================================== -->
+  <!-- 3. FULLSCREEN CINEMA LIGHTBOX (Zero-Copy)                      -->
+  <!-- ============================================================== -->
+  <div id="lightboxModal" 
+       onclick="handleBackdropClick(event)"
+       class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-center justify-center p-4 sm:p-8 opacity-0 pointer-events-none transition-all duration-300 ease-out">
+    
+    <div id="lightboxCard" 
+         onclick="event.stopPropagation()"
+         class="relative w-full max-w-5xl bg-[#141416]/95 border border-[#2d2d30] rounded-xl overflow-hidden shadow-2xl scale-95 transition-all duration-300 ease-out flex flex-col">
+      
+      <!-- Top Title Bar -->
+      <div class="px-6 py-4 bg-[#18181c]/90 border-b border-[#26262a] flex items-center justify-between">
+        <div>
+          <span id="lbTag" class="text-[10px] font-mono tracking-widest uppercase text-bild-beige block">AI Research Comparison</span>
+          <h3 id="lbTitle" class="text-sm sm:text-base font-light text-white tracking-wide">Comparison Title</h3>
+        </div>
+      </div>
+
+      <!-- Main Lightbox Comparison Viewport -->
+      <div class="relative w-full aspect-[16/9] bg-black overflow-hidden select-none" id="lbViewport">
+        
+        <!-- CARD 1 ZERO-COPY HOST -->
+        <div id="lb-view-card1" class="absolute inset-0 w-full h-full hidden"></div>
+
+        <!-- CARD 2 360 LIGHTBOX VIEW: Flat reference underneath, WebGL sphere on top -->
+        <div id="lb-view-card2" class="absolute inset-0 w-full h-full hidden cursor-grab active:cursor-grabbing">
+          <!-- Flat Original Reference Video (revealed when mouse leaves card) -->
+          <video id="lb-360-ref-2" 
+                 src="https://github.com/erictadeu-a11y/aivideos/releases/download/test/1.AI_2.mp4" 
+                 class="absolute inset-0 w-full h-full object-cover z-0" 
+                 loop muted playsinline preload="auto"></video>
+          
+          <!-- 360 Interactive Sphere Canvas container -->
+          <div id="three-lightbox-container-2" class="absolute inset-0 w-full h-full transition-opacity duration-300 z-10"></div>
+          
+          <!-- Dynamic Status Badge: flips between '360' and 'ORIGINAL' -->
+          <div class="absolute top-4 left-4 px-2.5 py-1 bg-black/85 rounded text-[11px] font-mono tracking-wider border border-white/10 z-20 pointer-events-none">
+            <span id="lb-360-badge-2" class="text-bild-beige font-semibold">360</span>
+          </div>
+          <div class="absolute bottom-4 right-4 text-[11px] font-mono text-white bg-black/80 px-2.5 py-1 rounded pointer-events-none z-20 border border-white/10">
+            drag to rotate
+          </div>
+        </div>
+
+        <!-- CARD 3 360 LIGHTBOX VIEW: Flat reference underneath, WebGL sphere on top -->
+        <div id="lb-view-card3" class="absolute inset-0 w-full h-full hidden cursor-grab active:cursor-grabbing">
+          <!-- Flat Original Reference Video (revealed when mouse leaves card) -->
+          <video id="lb-360-ref-3" 
+                 src="https://github.com/erictadeu-a11y/aivideos/releases/download/test/2.360.OG.mp4" 
+                 class="absolute inset-0 w-full h-full object-cover z-0" 
+                 loop muted playsinline preload="auto"></video>
+          
+          <!-- 360 Interactive Sphere Canvas container -->
+          <div id="three-lightbox-container-3" class="absolute inset-0 w-full h-full transition-opacity duration-300 z-10"></div>
+          
+          <!-- Dynamic Status Badge: flips between '360' and 'ORIGINAL' -->
+          <div class="absolute top-4 left-4 px-2.5 py-1 bg-black/85 rounded text-[11px] font-mono tracking-wider border border-white/10 z-20 pointer-events-none">
+            <span id="lb-360-badge-3" class="text-bild-beige font-semibold">360</span>
+          </div>
+          <div class="absolute bottom-4 right-4 text-[11px] font-mono text-white bg-black/80 px-2.5 py-1 rounded pointer-events-none z-20 border border-white/10">
+            drag to rotate
+          </div>
+        </div>
+
+        <!-- CARD 4 ZERO-COPY HOST -->
+        <div id="lb-view-card4" class="absolute inset-0 w-full h-full hidden"></div>
+
+      </div>
+
+      <!-- Bottom Meta Bar -->
+      <div class="px-6 py-3 bg-[#16161a] border-t border-[#26262a] flex items-center justify-between text-xs text-neutral-400 font-mono">
+        <span id="lbMeta">GITHUB_STREAM &bull; SYNCED 24 FPS</span>
+        <span class="text-neutral-500 text-[11px]">Click outside or press <kbd class="px-1.5 py-0.5 bg-[#262626] rounded text-neutral-300 border border-[#3a3a3a]">Esc</kbd> to return</span>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ============================================================== -->
+  <!-- 4. SUBTLE STUDIO TOAST NOTIFICATION                            -->
+  <!-- ============================================================== -->
+  <div id="studio-toast" class="fixed bottom-6 right-6 z-50 bg-[#1e1e1e] border border-bild-beige/40 px-5 py-3 rounded-md shadow-2xl text-xs font-light text-neutral-300 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-3">
+    <span class="w-2 h-2 rounded-full bg-bild-beige animate-pulse"></span>
+    <span id="studio-toast-msg">Module scheduled for release.</span>
+  </div>
+
+
+  <!-- ============================================================== -->
+  <!-- 5. APPLICATION COMPONENT CONTROLLERS & PLAYBACK ENGINE        -->
+  <!-- ============================================================== -->
+  <script>
+    // Video Section Tabs
+    function switchVideoSection(sectionId) {
+      var tabs = ['comparisons', 'specs', 'workflows', 'models'];
+      for (var i = 0; i < tabs.length; i++) {
+        var t = tabs[i];
+        var btn = document.getElementById('tab-v-' + t);
+        var view = document.getElementById('video-view-' + t);
+        if (btn) btn.classList.toggle('active', t === sectionId);
+        if (view) view.classList.toggle('hidden', t !== sectionId);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Sub-Category Filter (ALL | VIDEO TO VIDEO | 360)
+    function filterCategory(cat) {
+      var filters = ['all', 'v2v', '360'];
+      for (var i = 0; i < filters.length; i++) {
+        var f = filters[i];
+        var el = document.getElementById('f-video-' + f);
+        if (el) {
+          if (f === cat) el.classList.add('active');
+          else el.classList.remove('active');
+        }
+      }
+
+      var cards = document.querySelectorAll('.video-card');
+      for (var j = 0; j < cards.length; j++) {
+        var c = cards[j];
+        var cCat = c.getAttribute('data-category');
+        c.style.display = (cat === 'all' || (cCat && cCat.indexOf(cat) !== -1)) ? 'block' : 'none';
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // CARD 1 & CARD 4 DUAL-PLATE MEDIA & HOVER REVEALS
+    // ---------------------------------------------------------------
+    var card1MediaSlot = document.getElementById('card1-media-slot');
+    var videoRef1 = document.getElementById('video-ref-1');
+    var videoAi1 = document.getElementById('video-ai-1');
+    var aiLayer1 = document.getElementById('ai-layer-1');
+    var card1Badge = document.getElementById('card1-badge');
+
+    var card4MediaSlot = document.getElementById('card4-media-slot');
+    var videoRef4 = document.getElementById('video-ref-4');
+    var videoAi4 = document.getElementById('video-ai-4');
+    var aiLayer4 = document.getElementById('ai-layer-4');
+    var card4Badge = document.getElementById('card4-badge');
+
+    function handleCard1Hover(isHovering) {
+      if (aiLayer1) aiLayer1.style.opacity = isHovering ? '0' : '1';
+      if (card1Badge) {
+        if (isHovering) {
+          card1Badge.textContent = 'ORIGINAL';
+          card1Badge.classList.remove('text-bild-beige');
+          card1Badge.classList.add('text-white');
+        } else {
+          card1Badge.textContent = 'AI';
+          card1Badge.classList.remove('text-white');
+          card1Badge.classList.add('text-bild-beige');
+        }
+      }
+    }
+
+    function handleCard4Hover(isHovering) {
+      if (aiLayer4) aiLayer4.style.opacity = isHovering ? '0' : '1';
+      if (card4Badge) {
+        if (isHovering) {
+          card4Badge.textContent = 'ORIGINAL';
+          card4Badge.classList.remove('text-bild-beige');
+          card4Badge.classList.add('text-white');
+        } else {
+          card4Badge.textContent = 'AI';
+          card4Badge.classList.remove('text-white');
+          card4Badge.classList.add('text-bild-beige');
+        }
+      }
+    }
+
+    function setupVideoSync() {
+      // Sync Card 1
+      if (videoRef1 && videoAi1) {
+        videoRef1.addEventListener('ended', function() {
+          videoRef1.currentTime = 0;
+          videoAi1.currentTime = 0;
+          videoRef1.play().catch(function(){});
+          videoAi1.play().catch(function(){});
+        });
+        videoRef1.addEventListener('seeked', function() {
+          videoAi1.currentTime = videoRef1.currentTime;
+        });
+        videoRef1.addEventListener('play', function() {
+          if (videoAi1.paused) videoAi1.play().catch(function(){});
+        });
+        videoRef1.addEventListener('pause', function() {
+          if (!videoAi1.paused) videoAi1.pause();
+        });
+        var startBoth1 = function() {
+          videoRef1.play().catch(function(){});
+          videoAi1.play().catch(function(){});
+        };
+        videoRef1.addEventListener('canplay', startBoth1, { once: true });
+        startBoth1();
+      }
+
+      // Sync Card 4
+      if (videoRef4 && videoAi4) {
+        videoRef4.addEventListener('ended', function() {
+          videoRef4.currentTime = 0;
+          videoAi4.currentTime = 0;
+          videoRef4.play().catch(function(){});
+          videoAi4.play().catch(function(){});
+        });
+        videoRef4.addEventListener('seeked', function() {
+          videoAi4.currentTime = videoRef4.currentTime;
+        });
+        videoRef4.addEventListener('play', function() {
+          if (videoAi4.paused) videoAi4.play().catch(function(){});
+        });
+        videoRef4.addEventListener('pause', function() {
+          if (!videoAi4.paused) videoAi4.pause();
+        });
+        var startBoth4 = function() {
+          videoRef4.play().catch(function(){});
+          videoAi4.play().catch(function(){});
+        };
+        videoRef4.addEventListener('canplay', startBoth4, { once: true });
+        startBoth4();
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // THREE.JS 360° WEBGL SPHERES (Robust Video Engine)
+    // ---------------------------------------------------------------
+    var sphereState = {
+      card2: {
+        containerId: 'three-card-container-2',
+        videoSrc: 'https://raw.githubusercontent.com/erictadeu-a11y/aivideos/main/1%20360%20AI.mp4',
+        scene: null, camera: null, renderer: null, sphere: null, texture: null, videoEl: null,
+        lon: 180, lat: 0,
+        lbContainerId: 'three-lightbox-container-2',
+        lbScene: null, lbCamera: null, lbRenderer: null, lbSphere: null
+      },
+      card3: {
+        containerId: 'three-card-container-3',
+        videoSrc: 'https://raw.githubusercontent.com/erictadeu-a11y/aivideos/main/2%20360%20AI.mp4',
+        scene: null, camera: null, renderer: null, sphere: null, texture: null, videoEl: null,
+        lon: 180, lat: 0,
+        lbContainerId: 'three-lightbox-container-3',
+        lbScene: null, lbCamera: null, lbRenderer: null, lbSphere: null
+      }
+    };
+
+    var activeDragTarget = null;
+    var onPointerDownPointerX = 0, onPointerDownPointerY = 0;
+    var onPointerDownLon = 0, onPointerDownLat = 0;
+    var dragDistance = 0;
+
+    function createEquirectangularPlaceholder(label) {
+      var canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 512;
+      var ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#111215';
+      ctx.fillRect(0, 0, 1024, 512);
+
+      ctx.strokeStyle = '#22252c';
+      ctx.lineWidth = 2;
+      for (var x = 0; x <= 1024; x += 64) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 512); ctx.stroke();
+      }
+      for (var y = 0; y <= 512; y += 64) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1024, y); ctx.stroke();
+      }
+
+      ctx.fillStyle = '#c5b79d';
+      ctx.font = '22px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(label || 'BUFFERING 360 PANORAMA...', 512, 256);
+
+      var tex = new THREE.CanvasTexture(canvas);
+      tex.minFilter = THREE.LinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      return tex;
+    }
+
+    function loadCorsSafeVideoTexture(src, item, onTextureReady) {
+      var video = document.createElement('video');
+      video.loop = true;
+      video.muted = true;
+      video.defaultMuted = true;
+      video.setAttribute('muted', '');
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+      video.setAttribute('preload', 'auto');
+      video.setAttribute('disableRemotePlayback', '');
+      video.crossOrigin = 'anonymous';
+
+      item.videoEl = video;
+
+      function bindTexture(sourceUrl) {
+        video.src = sourceUrl;
+        
+        var handleReady = function() {
+          try {
+            var vidTexture = new THREE.VideoTexture(video);
+            vidTexture.minFilter = THREE.LinearFilter;
+            vidTexture.magFilter = THREE.LinearFilter;
+            vidTexture.format = THREE.RGBAFormat;
+            item.texture = vidTexture;
+
+            if (onTextureReady) {
+              onTextureReady(vidTexture);
+            }
+            video.play().catch(function(){});
+          } catch (e) {
+            console.warn('VideoTexture initialization notice:', e);
+          }
+        };
+
+        video.onloadeddata = handleReady;
+        video.load();
+        video.play().catch(function(){});
+      }
+
+      fetch(src)
+        .then(function(res) {
+          if (!res.ok) throw new Error('Fetch failed with status ' + res.status);
+          return res.blob();
+        })
+        .then(function(blob) {
+          var blobUrl = URL.createObjectURL(blob);
+          bindTexture(blobUrl);
+        })
+        .catch(function(err) {
+          console.warn('Blob fetch notice, falling back to direct video stream:', err);
+          bindTexture(src);
+        });
+
+      var unlock = function() {
+        if (video.paused) {
+          video.play().catch(function(){});
+        }
+      };
+      window.addEventListener('click', unlock, { once: true });
+      window.addEventListener('touchstart', unlock, { once: true });
+    }
+
+    function initSphereCard(cardKey) {
+      var item = sphereState[cardKey];
+      var container = document.getElementById(item.containerId);
+      if (!container) return;
+
+      var width = container.clientWidth || 400;
+      var height = container.clientHeight || 250;
+
+      item.scene = new THREE.Scene();
+      item.camera = new THREE.PerspectiveCamera(75, width / height, 1, 1100);
+      item.camera.target = new THREE.Vector3(0, 0, 0);
+
+      var placeholderTex = createEquirectangularPlaceholder('INITIALIZING ' + (cardKey === 'card2' ? '360 PLATE 01' : '360 PLATE 02'));
+      var geometry = new THREE.SphereGeometry(500, 60, 40);
+      geometry.scale(-1, 1, 1);
+
+      var material = new THREE.MeshBasicMaterial({ map: placeholderTex });
+      item.sphere = new THREE.Mesh(geometry, material);
+      item.scene.add(item.sphere);
+
+      item.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+      item.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+      item.renderer.setSize(width, height);
+      container.appendChild(item.renderer.domElement);
+
+      loadCorsSafeVideoTexture(item.videoSrc, item, function(vidTexture) {
+        if (item.sphere) {
+          item.sphere.material.map = vidTexture;
+          item.sphere.material.needsUpdate = true;
+        }
+      });
+
+      container.addEventListener('pointerdown', function(e) {
+        activeDragTarget = cardKey;
+        dragDistance = 0;
+        onPointerDownPointerX = e.clientX;
+        onPointerDownPointerY = e.clientY;
+        onPointerDownLon = item.lon;
+        onPointerDownLat = item.lat;
+        if (item.videoEl && item.videoEl.paused) {
+          item.videoEl.play().catch(function(){});
+        }
+      });
+    }
+
+    function initLightboxSphere(cardKey) {
+      var item = sphereState[cardKey];
+      var container = document.getElementById(item.lbContainerId);
+      var lbBox = document.getElementById('lbViewport');
+      if (!container || !lbBox) return;
+
+      var width = lbBox.clientWidth || 960;
+      var height = lbBox.clientHeight || 540;
+
+      if (!item.lbRenderer) {
+        item.lbScene = new THREE.Scene();
+        item.lbCamera = new THREE.PerspectiveCamera(75, width / height, 1, 1100);
+        item.lbCamera.target = new THREE.Vector3(0, 0, 0);
+
+        var geometry = new THREE.SphereGeometry(500, 60, 40);
+        geometry.scale(-1, 1, 1);
+        var material = new THREE.MeshBasicMaterial({ map: item.texture || createEquirectangularPlaceholder('LOADING 360...') });
+        item.lbSphere = new THREE.Mesh(geometry, material);
+        item.lbScene.add(item.lbSphere);
+
+        item.lbRenderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+        item.lbRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        item.lbRenderer.setSize(width, height);
+        container.appendChild(item.lbRenderer.domElement);
+
+        container.addEventListener('pointerdown', function(e) {
+          activeDragTarget = cardKey + '_lb';
+          onPointerDownPointerX = e.clientX;
+          onPointerDownPointerY = e.clientY;
+          onPointerDownLon = item.lon;
+          onPointerDownLat = item.lat;
+        });
+      } else {
+        if (item.texture && item.lbSphere) {
+          item.lbSphere.material.map = item.texture;
+          item.lbSphere.material.needsUpdate = true;
+        }
+        item.lbCamera.aspect = width / height;
+        item.lbCamera.updateProjectionMatrix();
+        item.lbRenderer.setSize(width, height);
+      }
+
+      if (item.videoEl && item.videoEl.paused) {
+        item.videoEl.play().catch(function(){});
+      }
+    }
+
+    function resumeSphericalVideos() {
+      ['card2', 'card3'].forEach(function(k) {
+        var item = sphereState[k];
+        if (item && item.videoEl && item.videoEl.paused) {
+          item.videoEl.play().catch(function(){});
+        }
+      });
+    }
+
+    function handleCard2Click(e) {
+      if (dragDistance > 8) return;
+      openLightbox('card2');
+    }
+
+    function handleCard3Click(e) {
+      if (dragDistance > 8) return;
+      openLightbox('card3');
+    }
+
+    window.addEventListener('pointermove', function(e) {
+      if (!activeDragTarget) return;
+      var dx = e.clientX - onPointerDownPointerX;
+      var dy = e.clientY - onPointerDownPointerY;
+      dragDistance += Math.abs(dx) + Math.abs(dy);
+
+      var key = activeDragTarget.replace('_lb', '');
+      var item = sphereState[key];
+      if (item) {
+        item.lon = (onPointerDownPointerX - e.clientX) * 0.16 + onPointerDownLon;
+        item.lat = (e.clientY - onPointerDownPointerY) * 0.16 + onPointerDownLat;
+      }
+    });
+
+    window.addEventListener('pointerup', function() {
+      activeDragTarget = null;
+    });
+
+    window.addEventListener('resize', function() {
+      ['card2', 'card3'].forEach(function(key) {
+        var item = sphereState[key];
+        var container = document.getElementById(item.containerId);
+        if (container && item.renderer && item.camera) {
+          var w = container.clientWidth;
+          var h = container.clientHeight;
+          item.camera.aspect = w / h;
+          item.camera.updateProjectionMatrix();
+          item.renderer.setSize(w, h);
+        }
+        if (item.lbRenderer && item.lbCamera) {
+          var lbBox = document.getElementById('lbViewport');
+          if (lbBox) {
+            item.lbCamera.aspect = lbBox.clientWidth / lbBox.clientHeight;
+            item.lbCamera.updateProjectionMatrix();
+            item.lbRenderer.setSize(lbBox.clientWidth, lbBox.clientHeight);
+          }
+        }
+      });
+    });
+
+    function animate360() {
+      requestAnimationFrame(animate360);
+
+      ['card2', 'card3'].forEach(function(key) {
+        var item = sphereState[key];
+
+        if (item.texture && item.videoEl && item.videoEl.readyState >= 2) {
+          item.texture.needsUpdate = true;
+        }
+
+        item.lat = Math.max(-85, Math.min(85, item.lat));
+        var phi = THREE.MathUtils.degToRad(90 - item.lat);
+        var theta = THREE.MathUtils.degToRad(item.lon);
+
+        var targetX = 500 * Math.sin(phi) * Math.cos(theta);
+        var targetY = 500 * Math.cos(phi);
+        var targetZ = 500 * Math.sin(phi) * Math.sin(theta);
+
+        if (item.camera && item.renderer && item.scene && activeLightbox !== key) {
+          item.camera.target.set(targetX, targetY, targetZ);
+          item.camera.lookAt(item.camera.target);
+          item.renderer.render(item.scene, item.camera);
+        }
+
+        if (item.lbCamera && item.lbRenderer && item.lbScene && activeLightbox === key) {
+          item.lbCamera.target.set(targetX, targetY, targetZ);
+          item.lbCamera.lookAt(item.lbCamera.target);
+          item.lbRenderer.render(item.lbScene, item.lbCamera);
+        }
+      });
+    }
+
+    // ---------------------------------------------------------------
+    // ZERO-COPY FULLSCREEN CINEMA LIGHTBOX
+    // ---------------------------------------------------------------
+    var modal = document.getElementById('lightboxModal');
+    var card = document.getElementById('lightboxCard');
+    var lbViewport = document.getElementById('lbViewport');
+    var lbViewCard1 = document.getElementById('lb-view-card1');
+    var lbViewCard2 = document.getElementById('lb-view-card2');
+    var lbViewCard3 = document.getElementById('lb-view-card3');
+    var lbViewCard4 = document.getElementById('lb-view-card4');
+
+    var lb360Ref2 = document.getElementById('lb-360-ref-2');
+    var lb360Badge2 = document.getElementById('lb-360-badge-2');
+    var lb360Container2 = document.getElementById('three-lightbox-container-2');
+
+    var lb360Ref3 = document.getElementById('lb-360-ref-3');
+    var lb360Badge3 = document.getElementById('lb-360-badge-3');
+    var lb360Container3 = document.getElementById('three-lightbox-container-3');
+
+    var isLightboxOpen = false;
+    var activeLightbox = null;
+
+    var modalMetaRegistry = {
+      card1: {
+        tag: "Video To Video Keyframe Propagation",
+        title: "MARS Volume Pyro & Wardrobe Inpaint",
+        meta: "GITHUB_STREAM &bull; SYNCED 24 FPS &bull; LTX RIPPLE & FLUX"
+      },
+      card2: {
+        tag: "Equirectangular Generative Outpaint",
+        title: "Full 360° Spherical Video Projection 01",
+        meta: "RAW_MEDIA_STREAM &bull; REAL-TIME WEBGL RENDERING"
+      },
+      card3: {
+        tag: "Equirectangular Generative Outpaint",
+        title: "Full 360° Spherical Video Projection 02",
+        meta: "RAW_MEDIA_STREAM &bull; REAL-TIME WEBGL RENDERING"
+      },
+      card4: {
+        tag: "Dual-Action Keyframe Synthesis",
+        title: "Dual-Action Motion Comparison",
+        meta: "GITHUB_STREAM &bull; SYNCED 24 FPS &bull; TEMPORAL CONSISTENCY"
+      }
+    };
+
+    function openLightbox(slot) {
+      activeLightbox = slot;
+      var data = modalMetaRegistry[slot] || modalMetaRegistry.card1;
+      document.getElementById('lbTag').textContent = data.tag;
+      document.getElementById('lbTitle').textContent = data.title;
+      document.getElementById('lbMeta').innerHTML = data.meta;
+
+      lbViewCard1.classList.add('hidden');
+      lbViewCard2.classList.add('hidden');
+      lbViewCard3.classList.add('hidden');
+      lbViewCard4.classList.add('hidden');
+
+      if (slot === 'card1') {
+        lbViewCard1.classList.remove('hidden');
+        lbViewCard1.appendChild(card1MediaSlot);
+      } else if (slot === 'card2') {
+        lbViewCard2.classList.remove('hidden');
+        if (lb360Ref2) lb360Ref2.play().catch(function(){});
+        if (lb360Container2) lb360Container2.style.opacity = '1';
+        if (lb360Badge2) {
+          lb360Badge2.textContent = '360';
+          lb360Badge2.className = 'text-bild-beige font-semibold';
+        }
+        initLightboxSphere('card2');
+      } else if (slot === 'card3') {
+        lbViewCard3.classList.remove('hidden');
+        if (lb360Ref3) lb360Ref3.play().catch(function(){});
+        if (lb360Container3) lb360Container3.style.opacity = '1';
+        if (lb360Badge3) {
+          lb360Badge3.textContent = '360';
+          lb360Badge3.className = 'text-bild-beige font-semibold';
+        }
+        initLightboxSphere('card3');
+      } else if (slot === 'card4') {
+        lbViewCard4.classList.remove('hidden');
+        lbViewCard4.appendChild(card4MediaSlot);
+      }
+
+      modal.classList.remove('pointer-events-none', 'opacity-0');
+      card.classList.remove('scale-95');
+      card.classList.add('scale-100');
+      isLightboxOpen = true;
+    }
+
+    function closeLightbox() {
+      if (!isLightboxOpen) return;
+      card.classList.remove('scale-100');
+      card.classList.add('scale-95');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+
+      if (activeLightbox === 'card1') {
+        var card1El = document.getElementById('card-1');
+        if (card1El && card1MediaSlot) {
+          card1El.insertBefore(card1MediaSlot, card1El.firstChild);
+        }
+        handleCard1Hover(false);
+      } else if (activeLightbox === 'card4') {
+        var card4El = document.getElementById('card-4');
+        if (card4El && card4MediaSlot) {
+          card4El.insertBefore(card4MediaSlot, card4El.firstChild);
+        }
+        handleCard4Hover(false);
+      }
+
+      if (lb360Ref2) lb360Ref2.pause();
+      if (lb360Ref3) lb360Ref3.pause();
+
+      isLightboxOpen = false;
+      activeLightbox = null;
+    }
+
+    function handleBackdropClick(e) {
+      if (e.target === modal) closeLightbox();
+    }
+
+    lbViewport.addEventListener('mouseenter', function() {
+      if (!isLightboxOpen) return;
+      if (activeLightbox === 'card1') {
+        handleCard1Hover(true);
+      } else if (activeLightbox === 'card4') {
+        handleCard4Hover(true);
+      }
+    });
+
+    lbViewport.addEventListener('mouseleave', function() {
+      if (!isLightboxOpen) return;
+      if (activeLightbox === 'card1') {
+        handleCard1Hover(false);
+      } else if (activeLightbox === 'card4') {
+        handleCard4Hover(false);
+      }
+    });
+
+    // Tracking for 360 Lightboxes (Card 2 and Card 3)
+    modal.addEventListener('mousemove', function(e) {
+      if (!isLightboxOpen || (activeLightbox !== 'card2' && activeLightbox !== 'card3')) return;
+      var rect = card.getBoundingClientRect();
+      var isInsideCard = (
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
+      );
+
+      if (activeLightbox === 'card2') {
+        if (isInsideCard) {
+          if (lb360Container2) lb360Container2.style.opacity = '1';
+          if (lb360Badge2) {
+            lb360Badge2.textContent = '360';
+            lb360Badge2.className = 'text-bild-beige font-semibold';
+          }
+        } else {
+          if (lb360Container2) lb360Container2.style.opacity = '0';
+          if (lb360Badge2) {
+            lb360Badge2.textContent = 'ORIGINAL';
+            lb360Badge2.className = 'text-white font-semibold';
+          }
+        }
+      } else if (activeLightbox === 'card3') {
+        if (isInsideCard) {
+          if (lb360Container3) lb360Container3.style.opacity = '1';
+          if (lb360Badge3) {
+            lb360Badge3.textContent = '360';
+            lb360Badge3.className = 'text-bild-beige font-semibold';
+          }
+        } else {
+          if (lb360Container3) lb360Container3.style.opacity = '0';
+          if (lb360Badge3) {
+            lb360Badge3.textContent = 'ORIGINAL';
+            lb360Badge3.className = 'text-white font-semibold';
+          }
+        }
+      }
+    });
+
+    window.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeLightbox();
+    });
+
+    // Window Load bootstrap
+    window.onload = function() {
+      setupVideoSync();
+      initSphereCard('card2');
+      initSphereCard('card3');
+      animate360();
+    };
+  </script>
+</body>
+</html>
